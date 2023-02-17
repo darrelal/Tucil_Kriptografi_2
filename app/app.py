@@ -1,8 +1,5 @@
-import io
 import sys
 import PyQt5.QtWidgets as qtw
-import matplotlib.pyplot as plt # Test
-from PyQt5.QtCore import QFile, QIODevice
 from PyQt5.QtWidgets import (
   QApplication, QPushButton, QMainWindow, QLabel, QFileDialog, QTextEdit)
 from PyQt5.QtGui import QFont
@@ -87,6 +84,7 @@ class Window(QMainWindow):
     self._input_ptext.move(10, 70)
     self._input_ptext.setFixedSize(400, 250)
     self._input_ptext.setStyleSheet(TEXTBOX_STYLE)
+    self._input_ptext.textChanged.connect(self.save_plaintext)
     
     self._input_esecret = QTextEdit(self,
                                   lineWrapMode=qtw.QTextEdit.FixedColumnWidth,
@@ -167,6 +165,9 @@ class Window(QMainWindow):
     self._cur_filepath = None
 
     self.show()
+    
+  def save_plaintext(self):
+    self._text_to_encrypt = string_to_bytes(self._input_ptext.toPlainText())
   
   def load_file(self):
     filepath = QFileDialog.getOpenFileName(None, 'OpenFile', '')
@@ -175,8 +176,9 @@ class Window(QMainWindow):
     
     with open(self._cur_filepath, 'rb') as f:
       file_bytes = f.read()
-    
+
     self._input_ptext.setPlainText(bytes_to_string(file_bytes))
+    self._text_to_encrypt = file_bytes
 
   def encrypt(self):
     if not self._input_esecret.toPlainText():
@@ -189,7 +191,7 @@ class Window(QMainWindow):
       return self._lbl_error.setText('Please input text to encrypt')
 
     secret = string_to_bytes(self._input_esecret.toPlainText())
-    data = string_to_bytes(self._input_ptext.toPlainText())
+    data = self._text_to_encrypt
     self.encrypted = vigenere_ext(secret, rc4(secret, data))
     self._output_encrypted.setPlainText(bytes_to_string(self.encrypted))
 
@@ -211,20 +213,15 @@ class Window(QMainWindow):
   def save_encrypted(self):
     file_name, _ = QFileDialog.getSaveFileName(self, 'Save File', '')
     if not file_name: return
-    file = QFile(file_name)
-    if file.open(QIODevice.WriteOnly | QIODevice.Text):
-      file.write(self.encrypted)
-      file.close()
+    with open(file_name, 'wb') as f: f.write(self.decrypted)
   
   def save_decrypted(self):
     file_name, _ = QFileDialog.getSaveFileName(self, 'Save File', '')
     if not file_name: return
-    file = QFile(file_name)
-    if file.open(QIODevice.WriteOnly | QIODevice.Text):
-      file.write(self.decrypted)
-      file.close()
+    with open(file_name, 'wb') as f: f.write(self.decrypted)
 
 if __name__ == '__main__':
   app = QApplication(sys.argv)
   window = Window()
   sys.exit(app.exec_())
+
